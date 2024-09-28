@@ -1,6 +1,7 @@
-fastapi
-pydantic
-google-generative-ai
+google-generativeai
 pdfplumber
-sentence-transformers
+sentence_transformers
+fastapi
+uvicorn
+python-multipart
 tensorflow
