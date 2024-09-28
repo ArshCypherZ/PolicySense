@@ -1,0 +1,6 @@
+fastapi
+pydantic
+google-generative-ai
+pdfplumber
+sentence-transformers
+tensorflow
