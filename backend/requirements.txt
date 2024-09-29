@@ -1,7 +1,7 @@
 google-generativeai
-pdfplumber
-sentence_transformers
+#pdfplumber
+#sentence_transformers
 fastapi
 uvicorn
-python-multipart
-tensorflow
+#python-multipart
+#tensorflow
