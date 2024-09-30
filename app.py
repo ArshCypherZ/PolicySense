@@ -31,9 +31,16 @@ async def insurance_chatbot(request: Request):
         
         response = chat_session.send_message(query)
         
+        # return {"response": response.text,"len":len(chat_session.history)}
         return {"response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
+
+from sentence_transformers import SentenceTransformer, util
+import pdfplumber
+text_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+
 
 @app.get("/")
 def read_root():
