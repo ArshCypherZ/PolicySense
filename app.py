@@ -36,9 +36,48 @@ async def insurance_chatbot(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
-from sentence_transformers import SentenceTransformer, util
-import pdfplumber
-text_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+# Helper function to read HTML form
+def read_html_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            html_content = file.read()
+        return html_content
+    except FileNotFoundError:
+        return "File not found. Please provide a valid file path."
+
+# Helper function to generate updated HTML
+def generate_updated_html(structured_info, html_template):
+    prompt = f"""
+    Based on the following structured information:
+    {structured_info}
+    
+    The placeholders in the HTML template might not match the keys in the structured information. 
+    Adjust the placeholders based on the logic of the structured data and the relevant HTML field names.
+    
+    Here is the HTML template:
+    {html_template}
+    
+    Only give the response as HTML code. Do not add any other text.
+    """
+    response = insurance_model.generate_content(prompt)
+    return response.text
+
+# API for updating the HTML form
+@app.post("/update-form")
+async def update_form(request: Request):
+    try:
+        body = await request.json()
+        structured_info = body.get("structured_info")
+        if not structured_info:
+            raise HTTPException(status_code=400, detail="structured_info is required")
+        
+        html_template = read_html_file('form.html') #C:\Users\tballa\Desktop\PolicySense\backend\form.html # Path to the HTML form template
+
+        updated_html = generate_updated_html(structured_info, html_template)
+        return {"updated_html": updated_html}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating HTML form: {str(e)}")
 
 
 
