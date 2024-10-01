@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # Configure API key for Google Generative AI
 API_KEY = "AIzaSyDHLQe1XH7ZtwwvLrTc3x4Kk5dosQUUmio"
@@ -36,48 +37,43 @@ async def insurance_chatbot(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
-# Helper function to read HTML form
-def read_html_file(file_path):
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            html_content = file.read()
-        return html_content
-    except FileNotFoundError:
-        return "File not found. Please provide a valid file path."
+generation_config = {
+  "temperature": 1,
+  "top_p": 0.95,
+  "top_k": 64,
+  "max_output_tokens": 8192,
+  "response_mime_type": "text/plain",
+}
 
-# Helper function to generate updated HTML
-def generate_updated_html(structured_info, html_template):
-    prompt = f"""
-    Based on the following structured information:
-    {structured_info}
-    
-    The placeholders in the HTML template might not match the keys in the structured information. 
-    Adjust the placeholders based on the logic of the structured data and the relevant HTML field names.
-    
-    Here is the HTML template:
-    {html_template}
-    
-    Only give the response as HTML code. Do not add any other text.
-    """
-    response = insurance_model.generate_content(prompt)
-    return response.text
+form_model = genai.GenerativeModel(
+  model_name="gemini-1.5-flash",
+  generation_config=generation_config,
+  # safety_settings = Adjust safety settings
+  # See https://ai.google.dev/gemini-api/docs/safety-settings
+  safety_settings={
+        HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+        HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+    },
 
-# API for updating the HTML form
+  system_instruction="You are an expert in extracting structured information from unstructured sentences. Your task is to extract personal details such as Name, Address, Age, Phone Number, Date of Birth, Email, Gender, and Occupation from the user's input.\n\nIf any of these fields are missing, ask follow-up questions one at a time to gather the missing information. Frame your questions in a conversational tone, asking directly for the missing information (e.g., 'What is your phone number?'). Avoid phrasing questions with specific names like 'What is John Doe's phone number?'.\n\nIf the user does not want to provide certain details, allow them the option to reply with 'None'. Once all required fields are submitted, respond in JSON format with the structured information.",
+)
+
+form_chat_session = form_model.start_chat()
+
+# API for extracting structured data from a query
 @app.post("/update-form")
 async def update_form(request: Request):
     try:
         body = await request.json()
-        structured_info = body.get("structured_info")
-        if not structured_info:
-            raise HTTPException(status_code=400, detail="structured_info is required")
-        
-        html_template = read_html_file('form.html') #C:\Users\tballa\Desktop\PolicySense\backend\form.html # Path to the HTML form template
-
-        updated_html = generate_updated_html(structured_info, html_template)
-        return {"updated_html": updated_html}
-    
+        query = body.get("query")
+        if not query:
+            raise HTTPException(status_code=400, detail="Query is required")        
+        response = form_chat_session.send_message(query)
+        return (response.text)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating HTML form: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error extracting structured information: {str(e)}")
+
 
 
 
