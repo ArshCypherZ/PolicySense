@@ -1,7 +1,7 @@
+fastapi
+uvicorn
 google-generativeai
 #pdfplumber
 #sentence_transformers
-fastapi
-uvicorn
-#python-multipart
-#tensorflow
+
+
