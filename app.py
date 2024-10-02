@@ -83,7 +83,6 @@ async def update_form(request: Request):
             raise HTTPException(status_code=400, detail="Query is required")
         
         response = form_chat_session.send_message(query)
-        genai.up
         return {"response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting structured information: {str(e)}")
