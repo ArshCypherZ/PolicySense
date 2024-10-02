@@ -142,6 +142,10 @@ async def upload_file(file: UploadFile = File(...), query: str = Form(...)):
     
     except Exception as e:
         return {"error": str(e)}
+    finally:
+        # Delete the file after processing is complete
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 @app.get("/")
 def read_root():
