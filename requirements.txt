@@ -1,7 +1,6 @@
 fastapi
 uvicorn
 google-generativeai
-#pdfplumber
-#sentence_transformers
+
 
 
