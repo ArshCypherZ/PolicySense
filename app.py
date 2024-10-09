@@ -1,5 +1,4 @@
 from fastapi import FastAPI, UploadFile, HTTPException, Request, File, Form
-from starlette.middleware.sessions import SessionMiddleware
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
@@ -9,11 +8,7 @@ import time
 API_KEY = "AIzaSyDHLQe1XH7ZtwwvLrTc3x4Kk5dosQUUmio"
 genai.configure(api_key=API_KEY)
 
-# Add session middleware for persistent file storage across multiple requests
-app = FastAPI()
-app.add_middleware(SessionMiddleware, secret_key="cum-yum")
-
-
+#insurance bot
 sys_in = """
     You are an expert insurance advisor and chatbot that provides detailed and accurate information 
     about various insurance policies. Your role is to assist users with any and all questions they 
@@ -47,6 +42,7 @@ async def insurance_chatbot(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
+# Autoform filling Bot
 generation_config = {
   "temperature": 1,
   "top_p": 0.95,
@@ -150,7 +146,8 @@ async def update_form(request: Request):
         return {"response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting structured information: {str(e)}")
-#2nd bot
+
+#doc_upload bot
 def upload_to_gemini(path, mime_type=None):
     """Uploads the given file to Gemini."""
     file = genai.upload_file(path, mime_type=mime_type)
@@ -184,48 +181,31 @@ model= genai.GenerativeModel(
 
 # API endpoint to handle file uploads and interact with the model
 @app.post("/policydoc-chatbot")
-async def upload_file(request: Request, file: UploadFile = File(None), query: str = Form(...)):
+async def upload_file(file: UploadFile = File(...), query: str = Form(...)):
 
     # Create the temp directory if it doesn't exist
     os.makedirs("temp", exist_ok=True)
 
-    # Handle file upload if a new file is sent
-    if file:
-        file_path = f"temp/{file.filename}" # Save it to a temp directory
-        with open(file_path, "wb") as f:
-            f.write(await file.read())
+    # Save the uploaded file
+    file_path = f"temp/{file.filename}"  # Save it to a temp directory
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
 
-        # Upload to Gemini and wait for the files to be processed
-        try:
-            uploaded_file = upload_to_gemini(file_path, mime_type=file.content_type)
-            wait_for_files_active([uploaded_file])
-
-            # Store the uploaded file in the session
-            if "gemini_files" not in request.session:
-                request.session["gemini_files"] = []
-            request.session["gemini_files"].append(uploaded_file)
-        
-        except Exception as e:
-            return {"error": str(e)}
-        finally:
-            # Remove the file from the temp directory
-            if os.path.exists(file_path):
-                os.remove(file_path)
-
-    # Retrieve previously uploaded files from the session
-    gemini_files = request.session.get("gemini_files", [])
-
-    if not gemini_files:
-        raise HTTPException(status_code=400, detail="Please upload at least one file.")
-
-
-    chat_session = model.start_chat()
-    
+    # Upload to Gemini and wait for the files to be processed
     try:
-        response = chat_session.send_message([gemini_files, query])
+        uploaded_file = upload_to_gemini(file_path, mime_type=file.content_type)
+        wait_for_files_active([uploaded_file])
+
+        chat_session = model.start_chat()
+        response = chat_session.send_message([uploaded_file, query])
         return {"response": response.text}
+    
     except Exception as e:
         return {"error": str(e)}
+    finally:
+        # Delete the file after processing is complete
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 @app.get("/")
 def read_root():
