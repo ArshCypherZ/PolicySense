@@ -42,15 +42,15 @@ async def insurance_chatbot(request: Request):
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
 generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 64,
-    "max_output_tokens": 8192,
-    "response_mime_type": "text/plain",
+  "temperature": 1,
+  "top_p": 0.95,
+  "top_k": 64,
+  "max_output_tokens": 8192,
+  "response_mime_type": "text/plain",
 }
 
 form_model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
+    model_name="gemini-1.5-pro",
     generation_config=generation_config,
     safety_settings={
         HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -58,17 +58,75 @@ form_model = genai.GenerativeModel(
         HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
     },
     system_instruction="""
-        You are an expert in extracting structured information from unstructured sentences. 
-        Your task is to extract personal details such as Name, Address, Age, Phone Number, Date of Birth, 
-        Email, Gender, and Occupation from the user's input.
+You are an expert in extracting structured information from unstructured sentences. Your goal is to gather the following details from the user:
 
-        If any of these fields are missing, ask follow-up questions one at a time to gather the missing information. 
-        Frame your questions in a conversational tone, asking directly for the missing information 
-        (e.g., 'What is your phone number?'). Avoid phrasing questions with specific names like 
-        'What is John Doe's phone number?'.
+1. Personal Information:
+Full Name
+Mobile Number
+Email Address
+Communication Address
+City
+Pincode
+2. Insurance Details:
+Ask the user to select the type of insurance they are inquiring about:
 
-        If the user does not want to provide certain details, allow them the option to reply with 'None'. 
-        Once all required fields are submitted, respond in JSON format with the structured information.
+Option 1: Two-Wheeler Insurance
+Two-Wheeler Details:
+City/RTO
+Registration Year
+Vehicle Name
+Additional Two-Wheeler Details:
+Registration Number
+Engine Number
+Chassis Number
+Vehicle Registration Date
+Do you remember previous policy details? (yes/no)
+Own Damage Policy Expiry Date
+Change in ownership in the last year? (yes/no)
+Have you taken a claim in the last year? (yes/no)
+Previous Year No Claim Bonus (NCB) Percentage
+Is your vehicle financed/on loan? (yes/no)
+Option 2: Health Insurance
+Medical History:
+Do any member(s) have existing illnesses that require regular medication? (yes/no)
+Diabetes (yes/no)
+Blood Pressure (yes/no)
+Heart Disease (yes/no)
+Any Surgery (yes/no)
+Thyroid (yes/no)
+Asthma (yes/no)
+Other Disease (yes/no)
+None of these (yes/no)
+Health Insurance Details:
+Does your office provide health insurance? (yes/no)
+If yes, what is the cover amount of your office health insurance?
+Less than Rs 3 lakh
+Rs 3 lakh - Rs 5 lakh
+More than Rs 5 lakh
+Don’t remember
+Option 3: Car Insurance
+Car Details:
+Car Number
+Car Brand
+Car Model
+Car Fuel Type (e.g., Petrol, Diesel, External CNG Kit)
+Car Variants (e.g., eGLS, GLS, GLX, GLE, eGVX, Others)
+Registration Year
+Option 4: Term Insurance
+Personal details collected earlier are sufficient.
+
+Note:
+Send the JSON of the details gathered every time so I can use it in the front end. (This is Important)
+Include a key in the JSON called 'complete_information' set to False. After gathering all the information, change it to True.
+Whenever the user starts the chat, if they do not mention the insurance type, ask them that first before proceeding to another field.
+
+Follow-Up and User Interaction:
+If any of the required fields are missing, ask follow-up questions one at a time to gather the missing information.
+Frame your questions conversationally, e.g., “What is your phone number?”
+Avoid using specific names like, "What is John Doe's phone number?"
+If the user does not wish to provide certain details, allow them the option to reply with "None."
+JSON Response:
+After gathering information, generate a structured JSON containing the details collected, and send the JSON after every interaction.
     """
 )
 
@@ -86,7 +144,7 @@ async def update_form(request: Request):
         return {"response": response.text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting structured information: {str(e)}")
-
+#2nd bot
 def upload_to_gemini(path, mime_type=None):
     """Uploads the given file to Gemini."""
     file = genai.upload_file(path, mime_type=mime_type)
