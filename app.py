@@ -17,6 +17,8 @@ sys_in = """
     and how to choose the right insurance plan. You respond in a clear, concise, and friendly manner, 
     making complex concepts easy to understand for the user. You also provide real-life examples, 
     industry insights, and step-by-step guidance when necessary.
+    Note:
+    Respond in Hindi if the user requests a response in Hindi.
 """
 
 insurance_model = genai.GenerativeModel(
@@ -106,13 +108,18 @@ async def insurance_chatbot(request: Request):
     try:
         body = await request.json()
         query = body.get("query")
+        language = body.get("language")
         user_id = body.get("user_id")  # Unique identifier for the user
         if not query or not user_id:
             raise HTTPException(status_code=400, detail="Query and user ID are required")
         
         # Retrieve or create chat session for the user
         chat_session = get_or_create_insurance_session(user_id)
-        response = chat_session.send_message(query)
+        if language=='Hindi':
+            response = chat_session.send_message(f'{query} in {language}')
+        else:
+            response = chat_session.send_message(query)
+        
         print(insurance_chat_sessions)
         return {"response": response.text}
     except Exception as e:
