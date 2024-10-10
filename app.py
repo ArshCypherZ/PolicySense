@@ -5,7 +5,7 @@ import os
 import time
 
 # Configure API key for Google Generative AI
-API_KEY="AIzaSyBmoYUZEL_q1y6aeHE-D7vaNOppdKrIoso"
+API_KEY="AIzaSyD28q1xpukVhjDYcLlV8fQOqw11fnvN_lk"
 genai.configure(api_key=API_KEY)
 
 # Insurance bot system prompt
