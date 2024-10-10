@@ -85,7 +85,7 @@ def get_or_create_insurance_session(user_id):
     return insurance_chat_sessions[user_id]
 
 # Utility function to start or reuse chat sessions for form bot
-def get_or_create_form_session(user_id: str):
+def get_or_create_form_session(user_id):
     if user_id not in form_chat_sessions:
         form_chat_sessions[user_id] = form_model.start_chat()
     return form_chat_sessions[user_id]
@@ -95,7 +95,7 @@ doc_upload_chat_sessions = {}
 uploaded_documents = {}
 
 # Utility function to start or reuse chat sessions for document upload bot
-def get_or_create_doc_upload_session(user_id: str):
+def get_or_create_doc_upload_session(user_id):
     if user_id not in doc_upload_chat_sessions:
         doc_upload_chat_sessions[user_id] = doc_upload_model.start_chat()
     return doc_upload_chat_sessions[user_id]
