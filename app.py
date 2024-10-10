@@ -6,7 +6,6 @@ import time
 import uuid
 
 # Configure API key for Google Generative AI
-#API_KEY = "AIzaSyDHLQe1XH7ZtwwvLrTc3x4Kk5dosQUUmio"
 API_KEY="AIzaSyBmoYUZEL_q1y6aeHE-D7vaNOppdKrIoso"
 genai.configure(api_key=API_KEY)
 
@@ -79,7 +78,7 @@ app = FastAPI()
 # In-memory dictionaries to hold chat sessions by user ID
 insurance_chat_sessions = {}
 form_chat_sessions = {}
-doc_upload_chat_sessions = {}
+
 
 # Utility function to start or reuse chat sessions for insurance bot
 def get_or_create_insurance_session(user_id: str):
@@ -92,6 +91,10 @@ def get_or_create_form_session(user_id: str):
     if user_id not in form_chat_sessions:
         form_chat_sessions[user_id] = form_model.start_chat()
     return form_chat_sessions[user_id]
+
+# In-memory dictionaries to hold chat sessions and uploaded documents by user ID
+doc_upload_chat_sessions = {}
+uploaded_documents = {}
 
 # Utility function to start or reuse chat sessions for document upload bot
 def get_or_create_doc_upload_session(user_id: str):
@@ -135,34 +138,63 @@ async def update_form(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error extracting structured information: {str(e)}")
 
-# Document upload chatbot endpoint
-@app.post("/policydoc-chatbot")
-async def upload_file(file: UploadFile = File(...), query: str = Form(...), user_id: str = Form(...)):
+# Endpoint to upload the document at the start
+@app.post("/policydoc-upload")
+async def upload_policy_document(file: UploadFile = File(...), user_id: str = Form(...)):
     try:
-        # Create the temp directory if it doesn't exist
+        # Save the uploaded file temporarily
         os.makedirs("temp", exist_ok=True)
-
-        # Save the uploaded file
         file_path = f"temp/{file.filename}"
+        
         with open(file_path, "wb") as f:
             f.write(await file.read())
 
-        # Upload to Gemini and wait for the files to be processed
+        # Upload the file to Gemini
         uploaded_file = upload_to_gemini(file_path, mime_type=file.content_type)
         wait_for_files_active([uploaded_file])
 
-        # Retrieve or create chat session for the user
-        chat_session = get_or_create_doc_upload_session(user_id)
-        response = chat_session.send_message([uploaded_file, query])
-        return {"response": response.text}
+        # Store the uploaded document for the user
+        uploaded_documents[user_id] = uploaded_file
+
+        # Return success response
+        return {"message": "Document uploaded successfully", "file_name": uploaded_file.name}
     
     except Exception as e:
         return {"error": str(e)}
     
     finally:
-        # Delete the file after processing is complete
+        # Clean up the temp file
         if os.path.exists(file_path):
             os.remove(file_path)
+
+# Endpoint to continue the conversation using the uploaded document
+@app.post("/policydoc-chatbot")
+async def continue_policy_document_chat(request: Request):
+    try:
+        body = await request.json()
+        query = body.get("query")
+        user_id = body.get("user_id")
+
+        if not query or not user_id:
+            raise HTTPException(status_code=400, detail="Query and user ID are required")
+
+        # Check if the user has already uploaded a document
+        if user_id not in uploaded_documents:
+            raise HTTPException(status_code=400, detail="No document uploaded for this user")
+
+        # Retrieve the uploaded document
+        uploaded_file = uploaded_documents[user_id]
+
+        # Retrieve or create chat session for the user
+        chat_session = get_or_create_doc_upload_session(user_id)
+
+        # Send the query along with the document reference to the chat model
+        response = chat_session.send_message([uploaded_file, query])
+
+        return {"response": response.text}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
 
 # Health check endpoint
 @app.get("/")
@@ -176,6 +208,14 @@ def upload_to_gemini(path, mime_type=None):
     return file
 
 def wait_for_files_active(files):
+    """Waits for the given files to be active."""
+    for name in (file.name for file in files):
+        file = genai.get_file(name)
+        while file.state.name == "PROCESSING":
+            time.sleep(10)
+            file = genai.get_file(name)
+        if file.state.name != "ACTIVE":
+            raise Exception(f"File {file.name} failed to process")
     """Waits for the given files to be active."""
     for name in (file.name for file in files):
         file = genai.get_file(name)
