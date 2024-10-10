@@ -2,8 +2,4 @@ fastapi
 uvicorn
 google-generativeai
 python-multipart
-# itsdangerous
-# secure
-# starlette
-
-
+python-dotenv

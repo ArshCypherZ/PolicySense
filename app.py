@@ -3,10 +3,14 @@ import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
 import time
+from dotenv import load_dotenv
+
+# Load the .env file
+load_dotenv()
 
 # Configure API key for Google Generative AI
-API_KEY="AIzaSyD28q1xpukVhjDYcLlV8fQOqw11fnvN_lk"
-genai.configure(api_key=API_KEY)
+api_key = os.getenv('GOOGLE_API_KEY')
+genai.configure(api_key=api_key)
 
 # Insurance bot system prompt
 sys_in = """
@@ -39,6 +43,8 @@ form_model_sys_in = """
     If the user does not want to provide certain details, allow them the option to reply with 'None'. 
     Once all required fields are submitted, respond in JSON format with the structured information.
 """
+
+
 
 form_model = genai.GenerativeModel(
     model_name="gemini-1.5-pro",
