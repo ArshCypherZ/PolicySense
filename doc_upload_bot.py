@@ -52,6 +52,7 @@ AI: "The terms and conditions require timely premium payments and reporting of c
 
 Note:
 Respond in Hindi only if the user requests a response in Hindi.
+Respond in English if the user requests a response in English.
 """
 
 doc_upload_model = genai.GenerativeModel(
@@ -138,7 +139,7 @@ async def continue_policy_document_chat(request: Request):
         if language=='Hindi':
             response = chat_session.send_message([uploaded_file,f'{query} in {language}'])
         else:
-            response = chat_session.send_message([uploaded_file, query])
+            response = chat_session.send_message([uploaded_file, f'{query} in {language}'])
 
         return {"response": response.text}
     
