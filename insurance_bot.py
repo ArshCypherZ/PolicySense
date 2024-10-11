@@ -53,7 +53,7 @@ async def insurance_chatbot(request: Request):
         if language=='Hindi':
             response = chat_session.send_message(f'{query} in {language}')
         else:
-            response = chat_session.send_message(query)
+            response = chat_session.send_message(f'{query} in {language}')
         
         return {"response": response.text}
     except Exception as e:
