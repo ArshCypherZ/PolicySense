@@ -83,6 +83,7 @@ def get_or_create_doc_upload_session(user_id):
     return doc_upload_chat_sessions[user_id]
 
 # Endpoint to upload the document at the start
+#@app.post("/policydoc-upload")
 @router.post("/policydoc-upload")
 async def upload_policy_document(file: UploadFile = File(...), user_id: str = Form(...)):
     try:
@@ -94,11 +95,11 @@ async def upload_policy_document(file: UploadFile = File(...), user_id: str = Fo
             f.write(await file.read())
 
         # Upload the file to Gemini
-        uploaded_file = genai.upload_file(file_path, mime_type=file.content_type)
+        uploaded_file = upload_to_gemini(file_path, mime_type=file.content_type)
         wait_for_files_active([uploaded_file])
 
         # Store the uploaded document for the user
-        uploaded_documents[user_id] = uploaded_file.name
+        uploaded_documents[user_id] = uploaded_file
 
         # Return success response
         return {"message": "Document uploaded successfully", "file_name": uploaded_file.name}
@@ -112,6 +113,7 @@ async def upload_policy_document(file: UploadFile = File(...), user_id: str = Fo
             os.remove(file_path)
 
 # Endpoint to continue the conversation using the uploaded document
+#@app.post("/policydoc-chatbot")
 @router.post("/policydoc-chatbot")
 async def continue_policy_document_chat(request: Request):
     try:
@@ -127,9 +129,7 @@ async def continue_policy_document_chat(request: Request):
             raise HTTPException(status_code=400, detail="No document uploaded for this user")
 
         # Retrieve the uploaded document
-        print("filename:",uploaded_documents)
         uploaded_file = uploaded_documents[user_id]
-        uploaded_file2=genai.get_file(uploaded_file)
 
         # Retrieve or create chat session for the user
         chat_session = get_or_create_doc_upload_session(user_id)
@@ -137,14 +137,20 @@ async def continue_policy_document_chat(request: Request):
         # Send the query along with the document reference to the chat model
 
         if language=='Hindi':
-            response = chat_session.send_message([uploaded_file2,f'{query} in {language}'])
+            response = chat_session.send_message([uploaded_file,f'{query} in {language}'])
         else:
-            response = chat_session.send_message([uploaded_file2, f'{query} in {language}'])
+            response = chat_session.send_message([uploaded_file, f'{query} in {language}'])
 
         return {"response": response.text}
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating response: {str(e)}")
+
+# Utility functions for file uploads
+def upload_to_gemini(path, mime_type=None):
+    """Uploads the given file to Gemini."""
+    file = genai.upload_file(path, mime_type=mime_type)
+    return file
 
 def wait_for_files_active(files):
     """Waits for the given files to be active."""
